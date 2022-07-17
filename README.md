@@ -1,8 +1,8 @@
 # Next.js + Bootstrap 5 - Boilerplate
-A simple ready-to-go boilerplate for Nuxt!
-[Nuxt.js](https://github.com/nuxt/nuxt.js)
+A simple ready-to-go boilerplate boilerplate with some modifications.
+[Next.js](https://github.com/vercel/next.js)
 [Bootstrap 5](https://github.com/twbs/bootstrap)
-[Bootstrap Icons](https://github.com/twbs/icons) boilerplate with some modifications.
+[Bootstrap Icons](https://github.com/twbs/icons)
 
 ## Versions
 ```json
