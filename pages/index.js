@@ -13,7 +13,6 @@ export default function Home() {
   const formatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
-
     // These options are needed to round to whole numbers if that's what you want.
     //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
     //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
@@ -27,8 +26,22 @@ export default function Home() {
     setTotalMensual(0);
   };
 
+  const minifyHTMLString = (htmlString) => {
+    // Remove all attributes from html tags
+    htmlString = htmlString.replace(/<[^>]*>/g, (tag) => {
+      return tag.replace(/ [^=]+="[^"]*"/g, "");
+    });
+
+    // Remove all white space without affecting html tags
+    htmlString = htmlString.replace(/(?<=>)\s+|\s+(?=<)/g, "");
+
+    return htmlString;
+  };
+
   const handleInputChange = (e) => {
-    setSaldo(e.target.value);
+    // Transform currency to number
+    const value = Number(e.target.value.replace(/[$, ]/g, ""));
+    setSaldo(value);
   };
 
   const handleTextareaChange = (e) => {
@@ -40,10 +53,8 @@ export default function Home() {
   };
 
   const handleSubmit = () => {
-    const parsedData = parseHTMLTable(input);
+    const parsedData = parseHTMLTable(minifyHTMLString(input));
     setData(parsedData);
-    // console.log('in', input);
-    // console.log('out', parsedData)
   };
 
   const createElementFromHTML = (htmlString) => {
@@ -102,9 +113,11 @@ export default function Home() {
     setTotalMensual(totalMensual);
 
     rows = rows.map((item) => {
-      item["Mensualidad"] = (
+      const value = (
         Number(item?.Importe.replace(/[$,]/g, "")) / Number(item["Plazo"])
       ).toFixed(2);
+      // Set number as currency
+      item["Mensualidad"] = formatter.format(value);
 
       return item;
     });
@@ -162,7 +175,7 @@ export default function Home() {
           </div>
         </div>
         {!data && (
-          <form onSubmit={handleSubmit}>
+          <div>
             <div className="mb-4">
               <label htmlFor="input">Saldo a la fecha</label>
               <input
@@ -189,10 +202,14 @@ export default function Home() {
                 placeholder="<table>...</table>"
               ></textarea>
             </div>
-            <button className="btn btn-primary btn-lg" type="submit">
+            <button
+              className="btn btn-primary btn-lg"
+              type="submit"
+              onClick={handleSubmit}
+            >
               Analizar datos
             </button>
-          </form>
+          </div>
         )}
 
         {data && (
