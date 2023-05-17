@@ -1,5 +1,6 @@
+import "datatables.net-dt/css/jquery.dataTables.min.css";
 import Head from "next/head";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const [table, setTable] = useState(false);
@@ -10,12 +11,25 @@ export default function Home() {
   const [totalMensual, setTotalMensual] = useState(0);
   const [debug, setDebug] = useState(false);
 
+  useEffect(() => {
+    if (!table) return;
+
+    const $ = require("jquery");
+    $.DataTable = require("datatables.net");
+    const dataTable = $("#table").DataTable({
+      paging: false,
+    });
+
+    // Destroy table if updates
+    return () => dataTable.destroy();
+  }, [table]);
+
   const formatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
     // These options are needed to round to whole numbers if that's what you want.
-    //minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
-    //maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
+    // minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
+    // maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
   });
 
   const resetForm = () => {
@@ -127,7 +141,7 @@ export default function Home() {
 
   const createTable = () => {
     return (
-      <table className="table table-sm small">
+      <table id="table" className="table table-sm small">
         <thead>
           <tr>
             {Object.keys(data[0]).map((key) => (
@@ -217,7 +231,10 @@ export default function Home() {
             <div className="card shadow border border-1 mb-4">
               <div className="card-body">
                 <h5 className="card-title mb-4">Resultados</h5>
-                <table className="table table-striped table-hover mb-0">
+                <table
+                  id="table-info"
+                  className="table table-striped table-hover mb-0"
+                >
                   <tbody>
                     <tr>
                       <th scope="row">Deuda total</th>
