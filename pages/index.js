@@ -1,334 +1,199 @@
 import "datatables.net-dt/css/jquery.dataTables.min.css";
 import Head from "next/head";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Debug } from "../components/Debug";
+import { Results } from "../components/Results";
+import { TableResults } from "../components/TableResults";
+import { Form } from "../components/Form";
 
 export default function Home() {
-  const [table, setTable] = useState(false);
-  const [input, setInput] = useState("");
-  const [data, setData] = useState(null);
-  const [saldo, setSaldo] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [totalMensual, setTotalMensual] = useState(0);
-  const [debug, setDebug] = useState(false);
+    const [table, setTable] = useState(false);
+    const [input, setInput] = useState("");
+    const [data, setData] = useState(null);
+    const [saldo, setSaldo] = useState(0);
+    const [total, setTotal] = useState(0);
+    const [totalMensual, setTotalMensual] = useState(0);
+    const [showDebug, setDebug] = useState(false);
 
-  useEffect(() => {
-    if (!table) return;
-
-    const $ = require("jquery");
-    $.DataTable = require("datatables.net");
-    const dataTable = $("#table").DataTable({
-      paging: false,
+    const formatter = new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+        // These options are needed to round to whole numbers if that's what you want.
+        // minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
+        // maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
     });
 
-    // Destroy table if updates
-    return () => dataTable.destroy();
-  }, [table]);
+    const resetForm = () => {
+        setTable(false);
+        setInput("");
+        setData(null);
+        setTotal(0);
+        setTotalMensual(0);
+    };
 
-  const formatter = new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    // These options are needed to round to whole numbers if that's what you want.
-    // minimumFractionDigits: 0, // (this suffices for whole numbers, but will print 2500.10 as $2,500.1)
-    // maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
-  });
+    const minifyHTMLString = (htmlString) => {
+        // Remove all attributes from html tags
+        htmlString = htmlString.replace(/<[^>]*>/g, (tag) => {
+            return tag.replace(/ [^=]+="[^"]*"/g, "");
+        });
 
-  const resetForm = () => {
-    setTable(false);
-    setInput("");
-    setData(null);
-    setTotal(0);
-    setTotalMensual(0);
-  };
+        // Remove all white space without affecting html tags
+        htmlString = htmlString.replace(/(?<=>)\s+|\s+(?=<)/g, "");
 
-  const minifyHTMLString = (htmlString) => {
-    // Remove all attributes from html tags
-    htmlString = htmlString.replace(/<[^>]*>/g, (tag) => {
-      return tag.replace(/ [^=]+="[^"]*"/g, "");
-    });
+        return htmlString;
+    };
 
-    // Remove all white space without affecting html tags
-    htmlString = htmlString.replace(/(?<=>)\s+|\s+(?=<)/g, "");
+    const handleInputChange = (e) => {
+        // Transform currency to number
+        const value = Number(e.target.value.replace(/[$, ]/g, ""));
+        setSaldo(value);
+    };
 
-    return htmlString;
-  };
+    const handleTextareaChange = (e) => {
+        setInput(e.target.value);
+    };
 
-  const handleInputChange = (e) => {
-    // Transform currency to number
-    const value = Number(e.target.value.replace(/[$, ]/g, ""));
-    setSaldo(value);
-  };
+    const handleCheckboxChange = (e) => {
+        setDebug(e.target.checked);
+    };
 
-  const handleTextareaChange = (e) => {
-    setInput(e.target.value);
-  };
+    const handleSubmit = () => {
+        const parsedData = parseHTMLTable(minifyHTMLString(input));
+        setData(parsedData);
+    };
 
-  const handleCheckboxChange = (e) => {
-    setDebug(e.target.checked);
-  };
+    const createElementFromHTML = (htmlString) => {
+        const div = document.createElement("div");
+        div.innerHTML = htmlString.trim();
+        const tableHTML = div.getElementsByTagName("table");
+        setTable(true);
+        return tableHTML;
+    };
 
-  const handleSubmit = () => {
-    const parsedData = parseHTMLTable(minifyHTMLString(input));
-    setData(parsedData);
-  };
+    const parseHTMLTable = (tableHTML) => {
+        if (!tableHTML) return;
 
-  const createElementFromHTML = (htmlString) => {
-    const div = document.createElement("div");
-    div.innerHTML = htmlString.trim();
-    const tableHTML = div.getElementsByTagName("table");
-    setTable(true);
-    return tableHTML;
-  };
+        const table = createElementFromHTML(tableHTML)[0];
 
-  const parseHTMLTable = (tableHTML) => {
-    if (!tableHTML) return;
+        if (!table) return;
 
-    const table = createElementFromHTML(tableHTML)[0];
+        let header = [];
+        let rows = [];
 
-    if (!table) return;
-
-    let header = [];
-    let rows = [];
-
-    for (let i = 0; i < table.rows[0].cells.length; i++) {
-      header.push(table.rows[0].cells[i].innerHTML);
-    }
-
-    for (let i = 1; i < table.rows.length; i++) {
-      const row = {};
-
-      for (let j = 0; j < table.rows[i].cells.length; j++) {
-        const inner = table.rows[i].cells[j].innerHTML;
-        if (inner && inner !== "-") {
-          row["Id"] = i;
-          row[header[j]] = inner;
+        for (let i = 0; i < table.rows[0].cells.length; i++) {
+            header.push(table.rows[0].cells[i].innerHTML);
         }
-      }
 
-      rows.push(row);
-    }
+        for (let i = 1; i < table.rows.length; i++) {
+            const row = {};
 
-    const total = rows.reduce((total, object) => {
-      return (
-        total +
-        ((object?.Importe && Number(object?.Importe.replace(/[$,]/g, ""))) || 0)
-      );
-    }, 0);
+            for (let j = 0; j < table.rows[i].cells.length; j++) {
+                const inner = table.rows[i].cells[j].innerHTML;
+                if (inner && inner !== "-") {
+                    row["Id"] = i;
+                    row[header[j]] = inner;
+                }
+            }
 
-    const totalMensual = rows.reduce((total, object) => {
-      const value =
-        (object?.Importe && Number(object?.Importe.replace(/[$,]/g, ""))) ||
-        0 ||
-        0;
-      const plazos = object?.Plazo || 0;
-      return total + value / plazos;
-    }, 0);
+            rows.push(row);
+        }
 
-    setTotal(total);
-    setTotalMensual(totalMensual);
+        const total = rows.reduce((total, object) => {
+            return (
+                total +
+                ((object?.Importe &&
+                    Number(object?.Importe.replace(/[$,]/g, ""))) ||
+                    0)
+            );
+        }, 0);
 
-    rows = rows.map((item) => {
-      const value = (
-        Number(item?.Importe.replace(/[$,]/g, "")) / Number(item["Plazo"])
-      ).toFixed(2);
-      // Set number as currency
-      item["Mensualidad"] = formatter.format(value);
+        const totalMensual = rows.reduce((total, object) => {
+            const value =
+                (object?.Importe &&
+                    Number(object?.Importe.replace(/[$,]/g, ""))) ||
+                0 ||
+                0;
+            const plazos = object?.Plazo || 0;
+            return total + value / plazos;
+        }, 0);
 
-      return item;
-    });
+        setTotal(total);
+        setTotalMensual(totalMensual);
 
-    return rows;
-  };
+        rows = rows.map((item) => {
+            const value = (
+                Number(item?.Importe.replace(/[$,]/g, "")) /
+                Number(item["Plazo"])
+            ).toFixed(2);
+            // Set number as currency
+            item["Mensualidad"] = formatter.format(value);
 
-  const createTable = () => {
+            return item;
+        });
+
+        return rows;
+    };
+
     return (
-      <table id="table" className="table table-sm small">
-        <thead>
-          <tr>
-            {Object.keys(data[0]).map((key) => (
-              <th key={key}>{key}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item) => (
-            <tr key={item.Id + Math.random()}>
-              {Object.values(item).map((val) => (
-                <td key={val + Math.random()}>{val}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
+        <div className="container py-4" style={{ maxWidth: 800 }}>
+            <Head>
+                <title>BBVA Analyzer</title>
+                <meta
+                    name="description"
+                    content="Generated by create next app"
+                />
+                <link rel="icon" href="/favicon.ico" />
+            </Head>
 
-  return (
-    <div className="container py-5" style={{ maxWidth: 800 }}>
-      <Head>
-        <title>BBVA Analyzer</title>
-        <meta name="description" content="Generated by create next app" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+            <main className="d-flex flex-column gap-4">
+                <div className="d-flex align-items-center justify-content-between">
+                    <h1>BBVA Analyzer</h1>
 
-      <main>
-        <h1 className="mb-4">BBVA Analyzer</h1>
-
-        <div className="d-flex mb-4">
-          <div className="form-check form-switch">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              role="switch"
-              id="debug"
-              name="debug"
-              onClick={handleCheckboxChange}
-            />
-            <label className="form-check-label" htmlFor="debug">
-              Debug
-            </label>
-          </div>
-        </div>
-        {!data && (
-          <div>
-            <div className="mb-4">
-              <label htmlFor="input">Saldo a la fecha</label>
-              <input
-                type="text"
-                className="form-control"
-                id="input"
-                onChange={handleInputChange}
-              />
-            </div>
-            <p className="lead">
-              Ingresa los datos de tabla obtenidos de BBVA Web
-            </p>
-            <div className="mb-4">
-              <label className="form-label" htmlFor="table">
-                Tabla HTML
-              </label>
-              <textarea
-                className="form-control"
-                name="table"
-                id="table"
-                cols="30"
-                rows="10"
-                onChange={handleTextareaChange}
-                placeholder="<table>...</table>"
-              ></textarea>
-            </div>
-            <button
-              className="btn btn-primary btn-lg"
-              type="submit"
-              onClick={handleSubmit}
-            >
-              Analizar datos
-            </button>
-          </div>
-        )}
-
-        {data && (
-          <>
-            <div className="card shadow border border-1 mb-4">
-              <div className="card-body">
-                <h5 className="card-title mb-4">Resultados</h5>
-                <table
-                  id="table-info"
-                  className="table table-striped table-hover mb-0"
-                >
-                  <tbody>
-                    <tr>
-                      <th scope="row">Deuda total</th>
-                      <td>{saldo ? formatter.format(saldo) : 0}</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Deuda al mes</th>
-                      <td>
-                        {saldo && total ? formatter.format(saldo - total) : 0}
-                      </td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Deuda mensual (Compras MSI)</th>
-                      <td>{total ? formatter.format(total) : 0}</td>
-                    </tr>
-                    <tr>
-                      <th scope="row">Pago mensual de compras a meses</th>
-                      <td>
-                        {totalMensual ? formatter.format(totalMensual) : 0}
-                      </td>
-                    </tr>
-                    <tr className="table-dark">
-                      <th scope="row">Pago mensual total</th>
-                      <td>
-                        {saldo && total && totalMensual
-                          ? formatter.format(saldo - total + totalMensual)
-                          : 0}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {table && (
-              <>
-                <div className="card shadow border border-1 mb-4">
-                  <div className="card-body">
-                    <h5 className="card-title mb-4">Deudas a meses</h5>
-                    {createTable()}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {debug && (
-              <>
-                <h3>Debug</h3>
-                <div className="card shadow border border-1 mb-4">
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-12 col-md-6">
-                        <h5>Input</h5>
-                        <div className="border border-1">
-                          <small>
-                            <code
-                              className="d-block overflow-auto"
-                              style={{ height: "200px" }}
-                            >
-                              <p className="lh-1 text-break">{input}</p>
-                            </code>
-                          </small>
+                    <div className="d-flex align-items-center gap-3">
+                        <div className="form-check form-switch">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                id="debug"
+                                name="debug"
+                                onClick={handleCheckboxChange}
+                            />
+                            <label className="form-check-label" htmlFor="debug">
+                                Debug
+                            </label>
                         </div>
-                      </div>
-                      <div className="col-12 col-md-6">
-                        <h5>Output</h5>
-                        <div className="border border-1">
-                          <small>
-                            <code>
-                              <pre
-                                className="lh-1 m-0"
-                                style={{ height: "200px" }}
-                              >
-                                {JSON.stringify(data, null, 2)}
-                              </pre>
-                            </code>
-                          </small>
-                        </div>
-                      </div>
+                        <button
+                            className="btn btn-danger rounded-pill"
+                            onClick={resetForm}
+                        >
+                            <i className="bi bi-arrow-counterclockwise" />
+                        </button>
                     </div>
-                  </div>
                 </div>
-              </>
-            )}
 
-            <button
-              className="btn btn-danger rounded-pill px-5"
-              onClick={resetForm}
-            >
-              Reiniciar datos
-            </button>
-          </>
-        )}
-      </main>
-    </div>
-  );
+                {!data ? (
+                    <>
+                        <Form
+                            handleInputChange={handleInputChange}
+                            handleTextareaChange={handleTextareaChange}
+                            handleSubmit={handleSubmit}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <Results
+                            total={total}
+                            totalMensual={totalMensual}
+                            saldo={saldo}
+                        />
+
+                        <TableResults table={table} data={data} />
+
+                        <Debug data={data} input={input} show={showDebug} />
+                    </>
+                )}
+            </main>
+        </div>
+    );
 }

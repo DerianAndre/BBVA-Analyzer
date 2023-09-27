@@ -1,3 +1,5 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  // indend using spaces and with size 4
+  "indent": ["error", 4]
 }
