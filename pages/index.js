@@ -1,18 +1,26 @@
 import "datatables.net-dt/css/jquery.dataTables.min.css";
+
 import Head from "next/head";
 import { useState } from "react";
 import { Debug } from "../components/Debug";
 import { Results } from "../components/Results";
 import { TableResults } from "../components/TableResults";
 import { Form } from "../components/Form";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import Link from "next/link";
 
 export default function Home() {
     const [table, setTable] = useState(false);
     const [input, setInput] = useState("");
     const [data, setData] = useState(null);
-    const [saldo, setSaldo] = useState(0);
-    const [total, setTotal] = useState(0);
-    const [totalMensual, setTotalMensual] = useState(0);
+    const [stored, setStored] = useLocalStorage("stored", false);
+    const [fecha, setFecha] = useLocalStorage("fecha", null);
+    const [saldo, setSaldo] = useLocalStorage("saldo", null);
+    const [total, setTotal] = useLocalStorage("total", null);
+    const [totalMensual, setTotalMensual] = useLocalStorage(
+        "totalMensual",
+        null
+    );
     const [showDebug, setDebug] = useState(false);
 
     const formatter = new Intl.NumberFormat("es-MX", {
@@ -23,12 +31,20 @@ export default function Home() {
         // maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
     });
 
+    const clearStorage = () => {
+        localStorage.clear();
+        setStored(false);
+        setData(null);
+        setTotal(null);
+        setTotalMensual(null);
+    };
+
     const resetForm = () => {
         setTable(false);
         setInput("");
         setData(null);
-        setTotal(0);
-        setTotalMensual(0);
+        setTotal(null);
+        setTotalMensual(null);
     };
 
     const minifyHTMLString = (htmlString) => {
@@ -60,6 +76,8 @@ export default function Home() {
     const handleSubmit = () => {
         const parsedData = parseHTMLTable(minifyHTMLString(input));
         setData(parsedData);
+        setStored(true);
+        setFecha(new Date());
     };
 
     const createElementFromHTML = (htmlString) => {
@@ -75,13 +93,13 @@ export default function Home() {
 
         const table = createElementFromHTML(tableHTML)[0];
 
-        if (!table) return;
+        if (!table || !table.rows[0] || !table.rows[0].cells[0]) return;
 
         let header = [];
         let rows = [];
 
-        for (let i = 0; i < table.rows[0].cells.length; i++) {
-            header.push(table.rows[0].cells[i].innerHTML);
+        for (let i = 0; i < table.rows[0]?.cells?.length; i++) {
+            header.push(table.rows[0]?.cells[i]?.innerHTML);
         }
 
         for (let i = 1; i < table.rows.length; i++) {
@@ -147,9 +165,11 @@ export default function Home() {
 
             <main className="d-flex flex-column gap-4">
                 <div className="d-flex align-items-center justify-content-between">
-                    <h1>BBVA Analyzer</h1>
+                    <Link href="/">
+                        <h1>BBVA Analyzer</h1>
+                    </Link>
 
-                    <div className="d-flex align-items-center gap-3">
+                    <div className="d-flex align-items-center gap-2">
                         <div className="form-check form-switch">
                             <input
                                 className="form-check-input"
@@ -164,16 +184,32 @@ export default function Home() {
                             </label>
                         </div>
                         <button
-                            className="btn btn-danger rounded-pill"
+                            className="btn btn-warning rounded-pill"
                             onClick={resetForm}
                         >
                             <i className="bi bi-arrow-counterclockwise" />
+                        </button>
+                        <button
+                            className="btn btn-danger rounded-pill"
+                            onClick={clearStorage}
+                        >
+                            <i className="bi bi-trash" />
                         </button>
                     </div>
                 </div>
 
                 {!data ? (
                     <>
+                        {stored && (
+                            <Results
+                                total={total}
+                                totalMensual={totalMensual}
+                                saldo={saldo}
+                                local={true}
+                                fecha={fecha}
+                            />
+                        )}
+
                         <Form
                             handleInputChange={handleInputChange}
                             handleTextareaChange={handleTextareaChange}

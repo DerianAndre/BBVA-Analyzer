@@ -6,11 +6,29 @@ const formatter = new Intl.NumberFormat("es-MX", {
     // maximumFractionDigits: 0, // (causes 2500.99 to be printed as $2,501)
 });
 
-export const Results = ({ saldo, total, totalMensual }) => {
+export const Results = ({
+    saldo,
+    total,
+    totalMensual,
+    fecha,
+    local = false,
+}) => {
     return (
         <div className="card shadow border border-1">
             <div className="card-body">
-                <h5 className="card-title mb-4">Resultados</h5>
+                <div className="d-flex align-items-baseline justify-content-between">
+                    <h5 className="card-title mb-4">
+                        {local
+                            ? "Resultados Guardados"
+                            : "Resultados Calculados"}
+                    </h5>
+                    {fecha && (
+                        <small className="text-muted">
+                            Última actualización:{" "}
+                            {new Date(fecha).toLocaleString()}
+                        </small>
+                    )}
+                </div>
                 <table
                     id="table-info"
                     className="table table-sm table-striped table-hover mb-0"
@@ -42,7 +60,7 @@ export const Results = ({ saldo, total, totalMensual }) => {
                         </tr>
                         <tr className="table-secondary">
                             <th scope="row">Pago mensual total</th>
-                            <td>
+                            <td className="fw-bold">
                                 {saldo && total && totalMensual
                                     ? formatter.format(
                                           saldo - total + totalMensual
