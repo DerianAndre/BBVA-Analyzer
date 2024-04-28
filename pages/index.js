@@ -7,6 +7,7 @@ import { Results } from "../components/Results";
 import { TableResults } from "../components/TableResults";
 import { Form } from "../components/Form";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import moment from "moment";
 import Link from "next/link";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
     const [input, setInput] = useState("");
     const [data, setData] = useState(null);
     const [stored, setStored] = useLocalStorage("stored", false);
+    const [offset, setOffset] = useLocalStorage("offset", 0);
     const [fecha, setFecha] = useLocalStorage("fecha", null);
     const [saldo, setSaldo] = useLocalStorage("saldo", null);
     const [total, setTotal] = useLocalStorage("total", null);
@@ -60,9 +62,23 @@ export default function Home() {
     };
 
     const handleInputChange = (e) => {
-        // Transform currency to number
-        const value = Number(e.target.value.replace(/[$, ]/g, ""));
+        let value = e.target.value;
+        const regex = /(\$[0-9,]+\.\d{2})/;
+        const matches = value.match(regex);
+
+        if (matches) {
+            value = matches[0];
+        }
+
+        value = Number(value.replace(/[$, ]/g, ""));
+
         setSaldo(value);
+    };
+
+    const handleOffsetChange = (e) => {
+        const value = e.target.value;
+        const offset = Number(value.replace(/[$, ]/g, ""));
+        setOffset(offset);
     };
 
     const handleTextareaChange = (e) => {
@@ -145,11 +161,24 @@ export default function Home() {
             ).toFixed(2);
             // Set number as currency
             item["Mensualidad"] = formatter.format(value);
+            item["Vigencia"] = formatDate(item["Vigencia"]);
 
             return item;
         });
 
+        // Order by date (Vigencia) format YYYY/MM/DD
+        rows.sort((a, b) => {
+            return new Date(a["Vigencia"]) - new Date(b["Vigencia"]);
+        });
+
         return rows;
+    };
+
+    const formatDate = (date) => {
+        const formattedDate = moment(date, "DD/MM/YYYY").format(
+            "YYYY / MM / DD"
+        );
+        return formattedDate;
     };
 
     return (
@@ -205,16 +234,11 @@ export default function Home() {
                                 total={total}
                                 totalMensual={totalMensual}
                                 saldo={saldo}
+                                offset={offset}
                                 local={true}
                                 fecha={fecha}
                             />
                         )}
-
-                        <Form
-                            handleInputChange={handleInputChange}
-                            handleTextareaChange={handleTextareaChange}
-                            handleSubmit={handleSubmit}
-                        />
                     </>
                 ) : (
                     <>
@@ -222,6 +246,7 @@ export default function Home() {
                             total={total}
                             totalMensual={totalMensual}
                             saldo={saldo}
+                            offset={offset}
                         />
 
                         <TableResults table={table} data={data} />
@@ -229,6 +254,15 @@ export default function Home() {
                         <Debug data={data} input={input} show={showDebug} />
                     </>
                 )}
+
+                <Form
+                    saldo={saldo}
+                    offset={offset}
+                    handleInputChange={handleInputChange}
+                    handleOffsetChange={handleOffsetChange}
+                    handleTextareaChange={handleTextareaChange}
+                    handleSubmit={handleSubmit}
+                />
             </main>
         </div>
     );

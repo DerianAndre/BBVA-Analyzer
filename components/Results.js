@@ -11,6 +11,7 @@ export const Results = ({
     total,
     totalMensual,
     fecha,
+    offset,
     local = false,
 }) => {
     return (
@@ -47,15 +48,19 @@ export const Results = ({
                             <td>
                                 {totalMensual
                                     ? formatter.format(totalMensual)
-                                    : 0}
+                                    : "$0.00"}
                             </td>
+                        </tr>
+                        <tr className="table-primary">
+                            <th scope="row">Offset</th>
+                            <td>{offset ? formatter.format(offset) : 0}</td>
                         </tr>
                         <tr className="table-primary">
                             <th scope="row">Compras del mes</th>
                             <td>
                                 {saldo && total
                                     ? formatter.format(saldo - total)
-                                    : 0}
+                                    : "$0.00"}
                             </td>
                         </tr>
                         <tr className="table-secondary">
@@ -63,9 +68,9 @@ export const Results = ({
                             <td className="fw-bold">
                                 {saldo && total && totalMensual
                                     ? formatter.format(
-                                          saldo - total + totalMensual
+                                          saldo - total + totalMensual - offset
                                       )
-                                    : 0}
+                                    : "$0.00"}
                             </td>
                         </tr>
                     </tbody>
