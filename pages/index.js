@@ -1,7 +1,7 @@
-import "datatables.net-dt/css/jquery.dataTables.min.css";
+import "datatables.net-dt/css/dataTables.dataTables.min.css";
 
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Debug } from "../components/Debug";
 import { Results } from "../components/Results";
 import { TableResults } from "../components/TableResults";
@@ -11,9 +11,10 @@ import moment from "moment";
 import Link from "next/link";
 
 export default function Home() {
-    const [table, setTable] = useState(false);
+    const [table, setTable] = useLocalStorage("table", false);
     const [input, setInput] = useState("");
-    const [data, setData] = useState(null);
+    const [data, setData] = useLocalStorage("data", null);
+    const [dataTable, setDataTable] = useLocalStorage("data-table", null);
     const [stored, setStored] = useLocalStorage("stored", false);
     const [offset, setOffset] = useLocalStorage("offset", 0);
     const [fecha, setFecha] = useLocalStorage("fecha", null);
@@ -45,6 +46,7 @@ export default function Home() {
         setTable(false);
         setInput("");
         setData(null);
+        setDataTable(null);
         setTotal(null);
         setTotalMensual(null);
     };
@@ -78,7 +80,7 @@ export default function Home() {
     const handleOffsetChange = (e) => {
         const value = e.target.value;
         const offset = Number(value.replace(/[$, ]/g, ""));
-        setOffset(offset);
+        setOffset(Number(offset));
     };
 
     const handleTextareaChange = (e) => {
@@ -90,7 +92,9 @@ export default function Home() {
     };
 
     const handleSubmit = () => {
-        const parsedData = parseHTMLTable(minifyHTMLString(input));
+        const tableString = minifyHTMLString(input);
+        setDataTable(tableString);
+        const parsedData = parseHTMLTable(tableString);
         setData(parsedData);
         setStored(true);
         setFecha(new Date());
@@ -181,6 +185,13 @@ export default function Home() {
         return formattedDate;
     };
 
+    useEffect(() => {
+        if (dataTable) {
+            const parsedData = parseHTMLTable(dataTable);
+            setData(parsedData);
+        }
+    }, []);
+
     return (
         <div className="container py-4" style={{ maxWidth: 800 }}>
             <Head>
@@ -248,12 +259,12 @@ export default function Home() {
                             saldo={saldo}
                             offset={offset}
                         />
-
-                        <TableResults table={table} data={data} />
-
-                        <Debug data={data} input={input} show={showDebug} />
                     </>
                 )}
+
+                {table && data && <TableResults table={table} data={data} />}
+
+                <Debug data={data} input={input} show={showDebug} />
 
                 <Form
                     saldo={saldo}

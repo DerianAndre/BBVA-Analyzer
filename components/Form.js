@@ -27,6 +27,7 @@ export const Form = ({
                         id="input"
                         onChange={handleOffsetChange}
                         value={offset}
+                        min={0}
                     />
                 </div>
             </div>
